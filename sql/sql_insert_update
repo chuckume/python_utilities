@@ -1,0 +1,22 @@
+import pandas as pd
+from sqlalchemy.engine.base import Engine
+from extract_existing_records import extract_existing_records
+from get_data_from_sql import get_data_from_sql
+
+
+
+def insert_update(df: pd.DataFrame, primary_keys:[str], engine: Engine, table_name: str):
+    pks = ', '.join(primary_keys)
+    sql_script =  f"SELECT id, {pks} FROM {table_name}"
+    old_data = get_data_from_sql(sql_script, engine)
+
+    existing, new = extract_existing_records( old_data, df,pk_columns)
+    delete_ids = list(existing['id'].astype('str').values)
+
+    ids = ', '.join(delete_ids)
+
+    delete_script = f"DELETE FROM {table_name} WHERE id in ({ids})"
+
+    with engine.connect() as con:
+        rs = con.execute(delete_script)
+    df.to_sql(table_name, engine, if_exists='append', index=False)
